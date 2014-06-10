@@ -10,6 +10,8 @@ import flash.filters.DropShadowFilter;
 import flash.geom.Point;
 import flash.media.Sound;
 import flash.text.TextField;
+import flash.events.TimerEvent;
+import flash.utils.Timer;
 import flash.text.TextFormat;
 import flash.text.TextFormatAlign;
 import flash.Lib;
@@ -26,22 +28,30 @@ class SnakeGame extends Sprite {
 	
 	
 	private var Background:Sprite;
-	private var SnakePart:Bitmap;
+	private var SnakePart:SnakePart;
 	private var IntroSound:Sound;
 	private var Logo:Bitmap;
 	private var Score:TextField;
 	private var Sound3:Sound;
 	private var Sound4:Sound;
 	private var Sound5:Sound;
+	private var bAllowMovement:Bool;
+
+
+	private var SnakeParts:Array<SnakePart>;
 	
+
+	public var fPreviousPositionX:Float;
+	public var fPreviousPositionY:Float;
+
 	
 	public var currentScale:Float;
 	public var currentScore:Int;
 	
 	private var cacheMouse:Point;
 	private var needToCheckMatches:Bool;
-	
-	
+
+	private var nCurrentIndex:Int;
 	
 	public function new () {
 		
@@ -56,6 +66,7 @@ class SnakeGame extends Sprite {
 	
 	private function construct ():Void {
 		
+		SnakeParts = new Array();
 		
 		var font = Assets.getFont ("fonts/FreebooterUpdated.ttf");
 		var defaultFormat = new TextFormat (font.fontName, 60, 0x000000);
@@ -93,10 +104,37 @@ class SnakeGame extends Sprite {
 		#end
 		Background.addEventListener (MouseEvent.MOUSE_MOVE, stage_onMouseMove);
 		
-		SnakePart = new Bitmap (Assets.getBitmapData ("images/snakePart.png"));
+		SnakePart = new SnakePart (0);
+		SnakeParts.insert(0, SnakePart);
+		nCurrentIndex = 1;
+		
 		Background.addChild(SnakePart);
 
+		Background.mouseChildren = false;
+
+		fPreviousPositionX = 0;
+		fPreviousPositionY = 0;
+
+		var timer = new Timer (2000);
+        timer.addEventListener (TimerEvent.TIMER, timer_onTimer);
+        timer.start ();
+
+        
+
+    }
+
+    private function timer_onTimer (event:TimerEvent):Void {
+
+       	SnakePart = new SnakePart (nCurrentIndex);
+       
+		SnakeParts.insert(nCurrentIndex, SnakePart);
+		nCurrentIndex+=1;
+		
+		Background.addChild(SnakePart);
+
+    
 	}
+	
 	
 	
 	
@@ -123,7 +161,7 @@ class SnakeGame extends Sprite {
 		currentScore = 0;
 		Score.text = "0";
 		
-	
+		nCurrentIndex = 0;
 		removeEventListener (Event.ENTER_FRAME, this_onEnterFrame);
 		addEventListener (Event.ENTER_FRAME, this_onEnterFrame);
 		
@@ -185,12 +223,39 @@ class SnakeGame extends Sprite {
 	
 
 	private function stage_onMouseMove (event:MouseEvent):Void {
-		
-		currentScore +=1;
-		Score.text = event.localX + '';
-		SnakePart.y = event.localY;
 
-		SnakePart.x = event.localX;
+		if(Math.abs(fPreviousPositionX - event.localX) > 10 && Math.abs(fPreviousPositionY - event.localY) > 10)
+		{
+			fPreviousPositionX = event.localX;
+			fPreviousPositionY = event.localY;
+			bAllowMovement = true;
+		}
+
+
+
+
+		if(bAllowMovement){
+			bAllowMovement = false;
+			currentScore +=1;
+			Score.text = event.localX + '';
+			var bFirst = true;
+			for( i in SnakeParts)
+			{
+				if(bFirst){
+					bFirst = false;
+					i.updatePosition(Std.int(event.localX-25), Std.int(event.localY-15));
+					i.y = event.localY-15;
+					i.x = event.localX-25;
+				}
+				else{
+					i.updatePosition(SnakeParts[i.nIndex-1].nPreviousX, SnakeParts[i.nIndex-1].nPreviousY);
+					i.y = SnakeParts[i.nIndex-1].nPreviousY;
+					i.x = SnakeParts[i.nIndex-1].nPreviousX;
+				}
+			}
+
+		}
+		
 		
 	}
 	
